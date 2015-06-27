@@ -1,0 +1,34 @@
+{
+    "name": "phtamas/yii2-mailer",
+    "description": "Configurable transactional emails for Yii2",
+    "keywords": [
+        "yii2",
+        "email",
+        "mail"
+    ],
+    "license": "MIT",
+    "require": {
+        "yiisoft/yii2": "~2.0.0",
+        "swiftmailer/swiftmailer": "~5.4.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.*"
+    },
+    "authors": [
+        {
+            "name": "Papp-Horváth Tamás",
+            "email": "phtamas@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "autoload": {
+        "psr-4": {
+            "phtamas\\yii2\\mailer\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "phtamas\\yii2\\mailer\\test\\": "test/"
+        }
+    }
+}
