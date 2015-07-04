@@ -119,6 +119,14 @@ class ComponentTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf('Swift_MailTransport', $transports[1]);
     }
 
+    public function testGetMailerWithTransportInstance()
+    {
+        $component = new Component([
+            'transports' => [\Swift_NullTransport::newInstance()],
+        ]);
+        $this->assertInstanceOf('Swift_Mailer', $component->getMailer());
+    }
+
     public function testGetViewPathDefaultReturnValue()
     {
         $component = new Component(['transports' => ['null']]);
@@ -294,5 +302,21 @@ class ComponentTest extends \PHPUnit_Framework_TestCase
             }));
         $component->setMailer($mailer);
         $component->send('test-mail', $templateData);
+    }
+
+    public function testTransportLog()
+    {
+        $component = new Component();
+        $transport = $this->getMockBuilder('Swift_NullTransport')
+            ->getMock();
+        $transport->expects($this->exactly(1))
+            ->method('registerPlugin')
+            ->with($this->callback(function ($plugin) {
+                $this->assertInstanceOf('Swift_Plugins_LoggerPlugin', $plugin);
+                return true;
+            }));
+        $component->transports = [$transport];
+        $component->transportLog = true;
+        $component->getMailer();
     }
 }

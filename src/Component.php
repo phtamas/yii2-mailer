@@ -5,10 +5,12 @@ use yii\base\Component as BaseComponent;
 use yii\base\InvalidConfigException;
 use yii\base\View;
 use yii\base\ViewContextInterface;
+use yii\log\Logger;
 
 /**
  * @property \Swift_Mailer $mailer
  * @property View $view
+ * @property Logger $logger
  */
 class Component extends BaseComponent implements ViewContextInterface
 {
@@ -24,11 +26,17 @@ class Component extends BaseComponent implements ViewContextInterface
     /** @var array */
     public $define;
 
+    /** @var bool */
+    public $transportLog = false;
+
     /** @var \Swift_Mailer */
     private $_mailer;
 
     /** @var View*/
     private $_view;
+
+    /** @var Logger */
+    private $_logger;
     /**
      * @return \Swift_Mailer
      */
@@ -62,6 +70,25 @@ class Component extends BaseComponent implements ViewContextInterface
     public function setView(View $view)
     {
         $this->_view = $view;
+    }
+
+    /**
+     * @return Logger
+     */
+    public function getLogger()
+    {
+        if (!isset($this->_logger)) {
+            $this->_logger = \Yii::getLogger();
+        }
+        return $this->_logger;
+    }
+
+    /**
+     * @param Logger $logger
+     */
+    public function setLogger(Logger $logger)
+    {
+        $this->_logger = $logger;
     }
 
     public function getViewPath()
@@ -137,11 +164,18 @@ class Component extends BaseComponent implements ViewContextInterface
             $transport = new \Swift_FailoverTransport();
             $transport->setTransports($transports);
         }
-        return new \Swift_Mailer($transport);
+        $mailer = new \Swift_Mailer($transport);
+        if ($this->transportLog) {
+            $mailer->registerPlugin(new \Swift_Plugins_LoggerPlugin(new LogAdapter($this->getLogger())));
+        }
+        return $mailer;
     }
 
     private function createTransport($config)
     {
+        if ($config instanceof \Swift_Transport) {
+            return $config;
+        }
         if (is_array($config)) {
             $type = $config['type'];
             unset($config['type']);
