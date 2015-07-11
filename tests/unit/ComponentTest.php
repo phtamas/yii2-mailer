@@ -2,37 +2,10 @@
 namespace phtamas\yii2\mailer\tests;
 
 use phtamas\yii2\mailer\Component;
+use phtamas\yii2\mailer\Mail;
 
 class ComponentTest extends \PHPUnit_Framework_TestCase
 {
-    private $messageFullConfiguration = [
-        'from' => ['from@test.test' => 'from name'],
-        'sender' => ['sender@test.test' => 'sender name'],
-        'to' => ['to@test.test' => 'to name'],
-        'cc' => ['cc@test.test' => 'cc name'],
-        'bcc' => ['bcc@test.test' => 'bcc name'],
-        'subject' => 'test subject',
-        'html' => true,
-    ];
-
-    public function messageFullConfigurationCallback($message)
-    {
-        $this->assertInstanceOf('Swift_Message', $message);
-        /* @var $message \Swift_Message */
-        $this->assertEquals(['from@test.test' => 'from name'], $message->getFrom());
-        $this->assertEquals(['sender@test.test' => 'sender name'], $message->getSender());
-        $this->assertEquals(['to@test.test' => 'to name'], $message->getTo());
-        $this->assertEquals(['cc@test.test' => 'cc name'], $message->getCc());
-        $this->assertEquals(['bcc@test.test' => 'bcc name'], $message->getBcc());
-        $this->assertEquals('test subject', $message->getSubject());
-        $this->assertEquals('multipart/alternative', $message->getContentType());
-        $this->assertEquals('html body', $message->getBody());
-        $this->assertArrayHasKey(0, $message->getChildren());
-        $this->assertEquals('text/plain', $message->getChildren()[0]->getContentType());
-        $this->assertEquals('plain text body', $message->getChildren()[0]->getBody());
-        return true;
-    }
-
     public function testGetMailerWithUnconfiguredSmtpTransport()
     {
         $component = new Component([
@@ -127,181 +100,64 @@ class ComponentTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf('Swift_Mailer', $component->getMailer());
     }
 
-    public function testGetViewPathDefaultReturnValue()
-    {
-        $component = new Component(['transports' => ['null']]);
-        $this->assertEquals(\Yii::$app->viewPath . DIRECTORY_SEPARATOR . 'mails', $component->getViewPath());
-    }
-
-    public function testGetViewPath()
+    public function testCreateWithNoDefinitionAndAllDefaults()
     {
         $component = new Component([
             'transports' => ['null'],
-            'viewPath' => '/mailer/view/path'
-        ]);
-        $this->assertEquals('/mailer/view/path', $component->getViewPath());
-    }
-
-    public function testSendUnconfiguredWithAllDefaultsAndNoOptions()
-    {
-        $component = new Component([
-            'transports' => ['null'],
-            'defaults' => $this->messageFullConfiguration,
+            'defaults' => [
+                'from' => ['from@test.test' => 'from name'],
+                'sender' => ['sender@test.test' => 'sender name'],
+                'to' => ['to@test.test' => 'to name'],
+                'cc' => ['cc@test.test' => 'cc name'],
+                'bcc' => ['bcc@test.test' => 'bcc name'],
+                'subject' => 'test subject',
+                'isHtml' => false,
+            ],
             'define' => [
                 'test-mail' => [],
             ],
         ]);
-
-        $templateData = ['key' => 'value'];
-
-        $view = $this->getMockBuilder('yii\web\View')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $view->method('render')
-            ->will($this->onConsecutiveCalls('plain text body', 'html body'));
-        $view->expects($this->exactly(2))
-            ->method('render')
-            ->withConsecutive(
-                [$this->equalTo('plain-text/test-mail'), $this->equalTo($templateData)],
-                [$this->equalTo('html/test-mail'), $this->equalTo($templateData)]
-            );
-        $component->setView($view);
-
-        $mailer = $this->getMockBuilder('Swift_Mailer')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $mailer->expects($this->once())
-            ->method('send')
-            ->with($this->callback([$this, 'messageFullConfigurationCallback']));
-        $component->setMailer($mailer);
-        $component->send('test-mail', $templateData);
+        $mail = $component->create('test-mail');
+        $this->assertInstanceOf(Mail::className(), $mail);
+        $message = $mail->getMessage();
+        $this->assertInstanceOf('Swift_Message', $message);
+        $this->assertEquals(['from@test.test' => 'from name'], $message->getFrom());
+        $this->assertEquals(['sender@test.test' => 'sender name'], $message->getSender());
+        $this->assertEquals(['to@test.test' => 'to name'], $message->getTo());
+        $this->assertEquals(['cc@test.test' => 'cc name'], $message->getCc());
+        $this->assertEquals(['bcc@test.test' => 'bcc name'], $message->getBcc());
+        $this->assertEquals('test subject', $message->getSubject());
+        $this->assertFalse($mail->getIsHtml());
     }
 
-    public function testSendFullyConfiguredWithNoDefaultsAndNoOptions()
+    public function testCreateWithFullDefinitionAndNoDefaults()
     {
         $component = new Component([
             'transports' => ['null'],
+            'defaults' => [],
             'define' => [
-                'test-mail' => $this->messageFullConfiguration,
+                'test-mail' => [
+                    'from' => ['from@test.test' => 'from name'],
+                    'sender' => ['sender@test.test' => 'sender name'],
+                    'to' => ['to@test.test' => 'to name'],
+                    'cc' => ['cc@test.test' => 'cc name'],
+                    'bcc' => ['bcc@test.test' => 'bcc name'],
+                    'subject' => 'test subject',
+                    'isHtml' => false,
+                ],
             ],
         ]);
-
-        $templateData = ['key' => 'value'];
-
-        $view = $this->getMockBuilder('yii\web\View')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $view->method('render')
-            ->will($this->onConsecutiveCalls('plain text body', 'html body'));
-        $view->expects($this->exactly(2))
-            ->method('render')
-            ->withConsecutive(
-                [$this->equalTo('plain-text/test-mail'), $this->equalTo($templateData)],
-                [$this->equalTo('html/test-mail'), $this->equalTo($templateData)]
-            );
-        $component->setView($view);
-
-        $mailer = $this->getMockBuilder('Swift_Mailer')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $mailer->expects($this->once())
-            ->method('send')
-            ->with($this->callback([$this, 'messageFullConfigurationCallback']));
-        $component->setMailer($mailer);
-        $component->send('test-mail', $templateData);
-    }
-
-    public function testSendUnconfiguredWithNoDeafultsAndAllOptions()
-    {
-        $component = new Component([
-            'transports' => ['null'],
-            'define' => [
-                'test-mail' => [],
-            ],
-        ]);
-
-        $templateData = ['key' => 'value'];
-
-        $view = $this->getMockBuilder('yii\web\View')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $view->method('render')
-            ->will($this->onConsecutiveCalls('plain text body', 'html body'));
-        $view->expects($this->exactly(2))
-            ->method('render')
-            ->withConsecutive(
-                [$this->equalTo('plain-text/test-mail'), $this->equalTo($templateData)],
-                [$this->equalTo('html/test-mail'), $this->equalTo($templateData)]
-            );
-        $component->setView($view);
-
-        $mailer = $this->getMockBuilder('Swift_Mailer')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $mailer->expects($this->once())
-            ->method('send')
-            ->with($this->callback([$this, 'messageFullConfigurationCallback']));
-        $component->setMailer($mailer);
-        $component->send('test-mail', $templateData, $this->messageFullConfiguration);
-    }
-
-    public function testSendWithNonExistingDefinition()
-    {
-        $component = new Component([
-            'transports' => ['null'],
-        ]);
-        $this->setExpectedException('yii\base\InvalidConfigException');
-        $component->send('non-existing-id', []);
-    }
-
-    public function testSendWithInvalidDefinitionType()
-    {
-        $component = new Component([
-            'transports' => ['null'],
-            'define' => [
-                'test-mail' => new \stdClass(),
-            ],
-        ]);
-        $this->setExpectedException('yii\base\InvalidConfigException');
-        $component->send('test-mail', []);
-    }
-
-    public function testSendPlainTextOnly()
-    {
-        $component = new Component([
-            'transports' => ['null'],
-            'define' => [
-                'test-mail' => array_replace_recursive($this->messageFullConfiguration, ['html' => false]),
-            ],
-        ]);
-
-        $templateData = ['key' => 'value'];
-
-        $view = $this->getMockBuilder('yii\web\View')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $view->method('render')
-            ->willReturn('plain text body');
-        $view->expects($this->once())
-            ->method('render')
-            ->with($this->equalTo('plain-text/test-mail'), $this->equalTo($templateData));
-        $component->setView($view);
-
-        $mailer = $this->getMockBuilder('Swift_Mailer')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $mailer->expects($this->once())
-            ->method('send')
-            ->with($this->callback(function ($message) {
-                $this->assertInstanceOf('Swift_Message', $message);
-                /* @var $message \Swift_Message */
-                $this->assertEquals('text/plain', $message->getContentType());
-                $this->assertEquals('plain text body', $message->getBody());
-                $this->assertCount(0, $message->getChildren());
-                return true;
-            }));
-        $component->setMailer($mailer);
-        $component->send('test-mail', $templateData);
+        $mail = $component->create('test-mail');
+        $this->assertInstanceOf(Mail::className(), $mail);
+        $message = $mail->getMessage();
+        $this->assertInstanceOf('Swift_Message', $message);
+        $this->assertEquals(['from@test.test' => 'from name'], $message->getFrom());
+        $this->assertEquals(['sender@test.test' => 'sender name'], $message->getSender());
+        $this->assertEquals(['to@test.test' => 'to name'], $message->getTo());
+        $this->assertEquals(['cc@test.test' => 'cc name'], $message->getCc());
+        $this->assertEquals(['bcc@test.test' => 'bcc name'], $message->getBcc());
+        $this->assertEquals('test subject', $message->getSubject());
+        $this->assertFalse($mail->getIsHtml());
     }
 
     public function testTransportLog()

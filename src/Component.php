@@ -12,7 +12,7 @@ use yii\log\Logger;
  * @property View $view
  * @property Logger $logger
  */
-class Component extends BaseComponent implements ViewContextInterface
+class Component extends BaseComponent
 {
     /** @var array */
     public $transports;
@@ -31,9 +31,6 @@ class Component extends BaseComponent implements ViewContextInterface
 
     /** @var \Swift_Mailer */
     private $_mailer;
-
-    /** @var View*/
-    private $_view;
 
     /** @var Logger */
     private $_logger;
@@ -57,22 +54,6 @@ class Component extends BaseComponent implements ViewContextInterface
     }
 
     /**
-     * @return View
-     */
-    public function getView()
-    {
-        if (!isset($this->_view)) {
-            $this->_view = \Yii::$app->view;
-        }
-        return $this->_view;
-    }
-
-    public function setView(View $view)
-    {
-        $this->_view = $view;
-    }
-
-    /**
      * @return Logger
      */
     public function getLogger()
@@ -91,65 +72,22 @@ class Component extends BaseComponent implements ViewContextInterface
         $this->_logger = $logger;
     }
 
-    public function getViewPath()
-    {
-        if (is_null($this->viewPath)) {
-            return \Yii::$app->viewPath . DIRECTORY_SEPARATOR . 'mails';
-        }
-        return $this->viewPath;
-    }
-
     /**
      * @param string $id
-     * @param array $data
-     * @param array $options
-     * @throws InvalidConfigException
+     * @return Mail
      */
-    public function send($id, array $data = [], array $options = [])
+    public function create($id)
     {
-        if (!isset($this->define[$id])) {
-            throw new InvalidConfigException(sprintf(
-                'Definition is missing for message id "%s".',
-                is_scalar($id) ? $id : gettype($id)
-            ));
-        }
         $definition = $this->define[$id];
-        if (!is_array($definition)) {
-            throw new InvalidConfigException(sprintf(
-                'Definition for message id "%s" expected to be an array of option => value pairs, %s given.',
-                $id,
-                gettype($definition)
-            ));
+        $mail = new Mail(
+            $id,
+            $this->getMailer(),
+            array_replace_recursive($this->defaults, $definition)
+        );
+        if (isset($this->viewPath)) {
+            $mail->setViewPath($this->viewPath);
         }
-        $config = array_replace_recursive($this->defaults, $definition, $options);
-        $message = new \Swift_Message();
-        if (isset($config['from'])) {
-            $message->setFrom($config['from']);
-        }
-        if (isset($config['sender'])) {
-            $message->setSender($config['sender']);
-        }
-        if (isset($config['to'])) {
-            $message->setTo($config['to']);
-        }
-        if (isset($config['cc'])) {
-            $message->setCc($config['cc']);
-        }
-        if (isset($config['bcc'])) {
-            $message->setBcc($config['bcc']);
-        }
-        if (isset($config['subject'])) {
-            $message->setSubject($config['subject']);
-        }
-        $plainTextBody = $this->getView()->render('plain-text/' . $id, $data);
-        if (isset($config['html']) && $config['html']) {
-            $htmlBody = $this->getView()->render('html/' . $id, $data);
-            $message->setBody($htmlBody, 'text/html');
-            $message->addPart($plainTextBody, 'text/plain');
-        } else {
-            $message->setBody($plainTextBody, 'text/plain');
-        }
-        $this->getMailer()->send($message);
+        return $mail;
     }
 
     private function createMailer()
