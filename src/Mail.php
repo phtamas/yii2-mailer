@@ -238,9 +238,9 @@ class Mail extends Object implements ViewContextInterface
     public function send(array $data = [])
     {
         $message = $this->getMessage();
-        $plainTextBody = $this->getView()->render($this->getPlainTextViewName(), $data);
+        $plainTextBody = $this->getView()->render($this->getPlainTextViewName(), $data, $this);
         if ($this->isHtml) {
-            $htmlBody = $this->getView()->render($this->getHtmlViewName(), $data);
+            $htmlBody = $this->getView()->render($this->getHtmlViewName(), $data, $this);
             $message->setBody($htmlBody, 'text/html');
             $message->addPart($plainTextBody, 'text/plain');
         } else {

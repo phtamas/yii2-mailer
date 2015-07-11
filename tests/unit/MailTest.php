@@ -7,19 +7,6 @@ class MailTest extends \PHPUnit_Framework_TestCase
 {
     public function testSend()
     {
-        $templateData = ['key' => 'value'];
-        $view = $this->getMockBuilder('yii\web\View')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $view->method('render')
-            ->will($this->onConsecutiveCalls('plain text body', 'html body'));
-        $view->expects($this->exactly(2))
-            ->method('render')
-            ->withConsecutive(
-                [$this->equalTo('plain-text/test-mail'), $this->equalTo($templateData)],
-                [$this->equalTo('html/test-mail'), $this->equalTo($templateData)]
-            );
-
         $mailer = $this->getMockBuilder('Swift_Mailer')
             ->disableOriginalConstructor()
             ->getMock();
@@ -37,7 +24,21 @@ class MailTest extends \PHPUnit_Framework_TestCase
             }));
 
         $mail = new Mail('test-mail', $mailer);
+
+        $templateData = ['key' => 'value'];
+        $view = $this->getMockBuilder('yii\web\View')
+            ->disableOriginalConstructor()
+            ->getMock();
+        $view->method('render')
+            ->will($this->onConsecutiveCalls('plain text body', 'html body'));
+        $view->expects($this->exactly(2))
+            ->method('render')
+            ->withConsecutive(
+                [$this->equalTo('plain-text/test-mail'), $this->equalTo($templateData), $this->identicalTo($mail)],
+                [$this->equalTo('html/test-mail'), $this->equalTo($templateData), $this->identicalTo($mail)]
+            );
         $mail->setView($view);
+
         $mail->send($templateData);
     }
 }
