@@ -4,6 +4,7 @@ namespace phtamas\yii2\mailer;
 use yii\base\Object;
 use yii\base\View;
 use yii\base\ViewContextInterface;
+use yii\helpers\FileHelper;
 
 /**
  * @property string|array $from
@@ -213,6 +214,20 @@ class Mail extends Object implements ViewContextInterface
     public function setSubject($subject)
     {
         $this->getMessage()->setSubject($subject);
+        return $this;
+    }
+
+    /**
+     * @param string $path
+     * @param string $mimeType
+     * @return $this
+     */
+    public function attachFile($path, $mimeType = null)
+    {
+        if (is_null($mimeType)) {
+            $mimeType = FileHelper::getMimeType($path);
+        }
+        $this->getMessage()->attach(\Swift_Attachment::fromPath($path, $mimeType));
         return $this;
     }
 
