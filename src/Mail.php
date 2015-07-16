@@ -27,6 +27,8 @@ class Mail extends Object implements ViewContextInterface
 
     private $_view;
 
+    private $_viewName;
+
     /**
      * @param string $id
      * @param \Swift_Mailer $mailer
@@ -59,22 +61,6 @@ class Mail extends Object implements ViewContextInterface
     }
 
     /**
-     * @return string
-     */
-    public function getHtmlViewName()
-    {
-        return 'html/' . $this->id;
-    }
-
-    /**
-     * @return string
-     */
-    public function getPlainTextViewName()
-    {
-        return 'plain-text/' . $this->id;
-    }
-
-    /**
      * @return \Swift_Message
      */
     public function getMessage()
@@ -99,6 +85,22 @@ class Mail extends Object implements ViewContextInterface
     public function setView(View $view)
     {
         $this->_view = $view;
+    }
+
+    /**
+     * @return string
+     */
+    public function getViewName()
+    {
+        return isset($this->_viewName) ? $this->_viewName : $this->id;
+    }
+
+    /**
+     * @param string $viewName
+     */
+    public function setViewName($viewName)
+    {
+        $this->_viewName = $viewName;
     }
 
     /**
@@ -232,20 +234,42 @@ class Mail extends Object implements ViewContextInterface
         return $this;
     }
 
+    public function beginPlainTextBody()
+    {
+        if (!$this->isHtml) {
+            throw new \BadMethodCallException('Plain tex mail cannot have additional plain text body.');
+        }
+        $this->getView()->beginBlock('mail.plainTextBody');
+    }
+
+    public function endPlainTextBody()
+    {
+        $this->getView()->endBlock();
+    }
+
     /**
      * @param array $data
      */
     public function send(array $data = [])
     {
-        $message = $this->getMessage();
-        $plainTextBody = $this->getView()->render($this->getPlainTextViewName(), $data, $this);
         if ($this->isHtml) {
-            $htmlBody = $this->getView()->render($this->getHtmlViewName(), $data, $this);
-            $message->setBody($htmlBody, 'text/html');
-            $message->addPart($plainTextBody, 'text/plain');
+            $htmlBody = $this->getView()->render($this->getViewName(), $data, $this);
+            if (isset($this->getView()->blocks['mail.plainTextBody'])) {
+                $plainTextBody = $this->getView()->blocks['mail.plainTextBody'];
+                unset($this->getView()->blocks['mail.plainTextBody']);
+            } else {
+                $plainTextBody = strip_tags($htmlBody);
+            }
+            $this->getMessage()
+                ->setContentType('text/html')
+                ->setBody($htmlBody);
+            $this->getMessage()
+                ->addPart($plainTextBody, 'text/plain');
         } else {
-            $message->setBody($plainTextBody, 'text/plain');
+            $this->getMessage()
+                ->setContentType('text/plain')
+                ->setBody($this->getView()->render($this->getViewName(), $data, $this));
         }
-        $this->mailer->send($message);
+        $this->mailer->send($this->getMessage());
     }
 }
